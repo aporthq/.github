@@ -422,7 +422,6 @@ graph TD
 
 ## 👥 For Every Role
 
-<div align="center">
 
 ### 🤖 **Agent Builders**
 Create and manage AI agent passports with capabilities and limits
@@ -492,8 +491,6 @@ curl -X POST "https://api.aport.io/api/passports/agt_tmpl_abc123/instances" \
     "overrides": {"limits": {"refund_amount_max_per_tx": 50}}
   }'
 ```
-
-</div>
 
 ## 🚀 Get Started Today
 
