@@ -6,6 +6,8 @@
 
 **The neutral, portable passport + verify + suspend rail for AI agents**
 
+> Built on the [Open Agent Passport (OAP) v1.0 specification](https://github.com/aporthq/aport-spec)
+
 [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Ready-10b981?style=flat-square&logo=github-actions)](https://github.com/aporthq/policy-verify-action)
 [![API Status](https://img.shields.io/badge/API-Live-10b981?style=flat-square&logo=api)](https://api.aport.io)
 [![License](https://img.shields.io/badge/License-MIT-f59e0b?style=flat-square)](LICENSE)
@@ -77,28 +79,29 @@ graph TD
 ### 1. Create Your Agent Passport
 
 ```bash
-# Create a template passport via API
-curl -X POST "https://api.aport.io/api/admin/create" \
+# Create a passport via API
+curl -X POST "https://api.aport.io/api/issue" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "name": "HappyRefunds Bot",
     "role": "Support Refunds",
     "description": "Refund helper for customer support",
-    "capabilities": [{"id": "payments.refund", "params": {}}],
+    "capabilities": [{"id": "finance.payment.refund", "params": {}}],
     "limits": {
-      "refund_usd_max_per_tx": 50,
-      "refund_usd_daily_cap": 200
+      "refund_amount_max_per_tx": 50,
+      "refund_amount_daily_cap": 200
     },
     "regions": ["US", "CA"],
     "contact": "team@aport.io",
+    "controller_type": "person",
+    "status": "active",
     "links": {
       "homepage": "https://aport.io",
       "repo": "https://github.com/aporthq/agent-passport"
     },
-    "kind": "template",
-    "controller_type": "org",
-    "status": "active"
+    "categories": ["support", "payments"],
+    "framework": ["OpenAI", "LangChain"]
   }'
 ```
 
@@ -117,18 +120,18 @@ jobs:
       - uses: aporthq/policy-verify-action@v1
         with:
           agent-id: ${{ secrets.APORT_AGENT_ID }}
-          policy-pack: 'repo.v1'
+          policy-pack: 'code.repository.merge.v1'
 ```
 
 ### 3. Integrate with Your App
 
 ```javascript
 // Express.js with Policy Pack middleware
-const { requirePolicy } = require("@aport/middleware-express");
+const { requirePolicy } = require("@aporthq/middleware-express-express");
 
 // Apply policy enforcement to refunds endpoint
 app.post("/api/refunds", 
-  requirePolicy("refunds.v1", "agt_inst_xyz789"),
+  requirePolicy("finance.payment.refund.v1", "agt_inst_xyz789"),
   async (req, res) => {
     // Your business logic - policy already verified!
     const refund = await processRefund(req.body);
@@ -148,7 +151,7 @@ app.post("/api/refunds",
 | **⚡ Real-time Verify** | Sub-100ms policy checks | Block bad actions instantly |
 | **🚨 Global Suspend** | Kill switch across all platforms | Stop incidents in seconds |
 | **🔐 Multi-level Assurance** | Email, GitHub, Domain verification | Trust but verify |
-| **📊 Audit Trail** | Complete action history | Compliance & debugging |
+| **📊 Verifiable Attestation** | Complete action history | Compliance & debugging |
 
 </div>
 
@@ -182,38 +185,74 @@ graph LR
 
 ## 📦 Policy Packs
 
-### 💳 Refunds Protection
+> **OAP v1.0 compliant policy definitions for instant AI agent governance**
+
+### 💳 **Finance & Payments**
 ```json
 {
-  "policy": "refunds.v1",
+  "policy": "finance.payment.charge.v1",
+  "capability": "payments.charge",
+  "assurance": "L2",
   "limits": {
-    "max_refund_per_tx": 1000,
-    "max_refunds_per_day": 10,
-    "allowed_currencies": ["USD", "EUR"]
+    "currency_limits": { "USD": { "max_per_tx": 10000 } },
+    "allowed_merchant_ids": ["merchant_123"],
+    "blocked_categories": ["adult", "gambling"]
   }
 }
 ```
 
-### 📊 Data Export Control
+### 💰 **Refunds Protection**
 ```json
 {
-  "policy": "data_export.v1", 
+  "policy": "finance.payment.refund.v1",
+  "capability": "finance.payment.refund", 
+  "assurance": "L2",
+  "limits": {
+    "max_refund_per_tx": 1000,
+    "cross_currency_denied": true,
+    "reason_codes_required": ["defective", "not_as_described"]
+  }
+}
+```
+
+### 📊 **Data Export Control**
+```json
+{
+  "policy": "data.export.create.v1",
+  "capability": "data.export",
+  "assurance": "L1", 
   "limits": {
     "max_rows_per_export": 100000,
     "allow_pii": false,
-    "allowed_datasets": ["users", "orders"]
+    "allowed_formats": ["csv", "json"]
   }
 }
 ```
 
-### 🔀 Repository Safety
+### 🔀 **Repository Safety**
 ```json
 {
-  "policy": "repo.v1",
+  "policy": "code.repository.merge.v1",
+  "capabilities": ["repo.merge", "repo.pr.create"],
+  "assurance": "L2",
   "limits": {
     "max_prs_per_day": 5,
     "allowed_repos": ["owner/repo1"],
     "require_review": true
+  }
+}
+```
+
+### 💬 **Messaging Control**
+```json
+{
+  "policy": "messaging.message.send.v1",
+  "capability": "messaging.send",
+  "assurance": "L1",
+  "limits": {
+    "messages_per_hour": 100,
+    "allowed_channels": ["support", "notifications"],
+    "mention_policies": "restricted"
   }
 }
 ```
@@ -223,19 +262,19 @@ graph LR
 ### 🛒 E-commerce Refund Bot
 ```javascript
 // Express.js with Policy Pack middleware
-const { requirePolicy } = require("@aport/middleware-express");
+const { requirePolicy } = require("@aporthq/middleware-express-express");
 
 app.post("/api/refunds", 
-  requirePolicy("refunds.v1", "agt_inst_xyz789"),
+  requirePolicy("finance.payment.refund.v1", "agt_inst_xyz789"),
   async (req, res) => {
     // Policy already verified! Check specific limits
     const passport = req.policyResult.passport;
     
-    if (req.body.amount > passport.limits.refund_usd_max_per_tx) {
+    if (req.body.amount > passport.limits.refund_amount_max_per_tx) {
       return res.status(403).json({
         error: "Refund exceeds limit",
         requested: req.body.amount,
-        limit: passport.limits.refund_usd_max_per_tx
+        limit: passport.limits.refund_amount_max_per_tx
       });
     }
 
@@ -280,7 +319,7 @@ jobs:
               }
             }')
           
-          curl -s -X POST "https://api.aport.io/api/verify/policy/repo.v1" \
+          curl -s -X POST "https://api.aport.io/api/verify/policy/code.repository.merge.v1" \
             -H "Content-Type: application/json" \
             -d "$BODY" | tee result.json
         env:
@@ -294,7 +333,7 @@ from fastapi import FastAPI, Request
 from aport.middleware import require_policy
 
 @app.post("/api/data/export")
-@require_policy("data_export.v1", "agt_inst_xyz789")
+@require_policy("data.export.create.v1", "agt_inst_xyz789")
 async def export_data(request: Request, export_data: dict):
     passport = request.state.policy_result.passport
     
@@ -324,7 +363,7 @@ async def export_data(request: Request, export_data: dict):
 
 | **Metric** | **Target** | **Actual** |
 |---|---|---|
-| **⚡ Verify Latency** | <100ms p95 | **~50ms p95** |
+| **⚡ Verify Latency** | <100ms p95 | **~100ms p95** |
 | **🚨 Suspend Time** | <30s global | **~15s global** |
 | **📈 Uptime** | 99.9% | **99.99%** |
 | **🔄 Throughput** | 10k req/s | **50k+ req/s** |
@@ -373,7 +412,7 @@ graph TD
 
 ### 🔐 **Enterprise Ready**
 - Multi-level assurance
-- Complete audit trails
+- Complete Verifiable Attestation
 - Compliance built-in
 
 ### 🛠️ **Developer Friendly**
@@ -389,14 +428,19 @@ graph TD
 Create and manage AI agent passports with capabilities and limits
 
 ```bash
-# Issue a template passport
-curl -X POST "https://api.aport.io/api/admin/create" \
-  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
+# Issue a passport
+curl -X POST "https://api.aport.io/api/issue" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "name": "HappyRefunds Bot",
-    "role": "Support Refunds", 
-    "capabilities": [{"id": "payments.refund", "params": {}}],
-    "limits": {"refund_usd_max_per_tx": 50}
+    "role": "Support Refunds",
+    "description": "Refund helper for customer support",
+    "capabilities": [{"id": "finance.payment.refund", "params": {}}],
+    "limits": {"refund_amount_max_per_tx": 50},
+    "regions": ["US", "CA"],
+    "contact": "team@aport.io",
+    "controller_type": "person",
+    "status": "active"
   }'
 ```
 
@@ -405,10 +449,10 @@ Integrate APort middleware to protect sensitive operations
 
 ```javascript
 // Express.js middleware
-const { requirePolicy } = require("@aport/middleware-express");
+const { requirePolicy } = require("@aporthq/middleware-express-express");
 
 app.post("/api/refunds", 
-  requirePolicy("refunds.v1", "agt_inst_xyz789"),
+  requirePolicy("finance.payment.refund.v1", "agt_inst_xyz789"),
   async (req, res) => {
     // Policy already verified!
     res.json({ success: true, refund: await processRefund(req.body) });
@@ -431,7 +475,7 @@ jobs:
       - uses: aporthq/policy-verify-action@v1
         with:
           agent-id: ${{ secrets.APORT_AGENT_ID }}
-          policy-pack: 'repo.v1'
+          policy-pack: 'code.repository.merge.v1'
 ```
 
 ### 🎯 **No-Code Platforms**
@@ -445,7 +489,7 @@ curl -X POST "https://api.aport.io/api/passports/agt_tmpl_abc123/instances" \
     "platform_id": "gorgias",
     "controller_id": "org_acme",
     "tenant_ref": "store_987",
-    "overrides": {"limits": {"refund_usd_max_per_tx": 50}}
+    "overrides": {"limits": {"refund_amount_max_per_tx": 50}}
   }'
 ```
 
@@ -472,6 +516,7 @@ curl -X POST "https://api.aport.io/api/passports/agt_tmpl_abc123/instances" \
 - 🎮 **[Playground](https://aport.io/playground)** - Try APort in your browser
 - 📺 **[Video Tutorials](https://youtube.com/@aport)** - Step-by-step guides
 - 💡 **[Examples](https://github.com/aporthq/examples)** - Real-world implementations
+- 🛡️ **[OAP v1.0 Specification](https://github.com/aporthq/aport-spec)** - Open Agent Passport standard
 - 🐛 **[Report Issues](https://github.com/aporthq/agent-passport/issues)** - Help us improve
 
 ## 🤝 Contributing
