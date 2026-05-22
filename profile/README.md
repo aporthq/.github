@@ -1,547 +1,190 @@
-# 🛡️ APort - Agent Identity & Policy Enforcement
+# APort
 
 <div align="center">
 
-![APort Logo](https://img.shields.io/badge/APort-Agent%20Passport-06b6d4?style=for-the-badge&logo=shield&logoColor=white)
+<img src="https://img.shields.io/badge/APort-AI%20Agent%20Passport-0D1117?style=for-the-badge&labelColor=06090F&color=22D3EE" alt="APort AI Agent Passport" />
+<img src="https://img.shields.io/badge/OAP-v1.0-0D1117?style=for-the-badge&labelColor=06090F&color=E8ECF1" alt="Open Agent Passport v1.0" />
+<img src="https://img.shields.io/badge/Guardrails-Pre--Action-0D1117?style=for-the-badge&labelColor=06090F&color=67E8F9" alt="Pre-action guardrails" />
 
-**The neutral, portable passport + verify + suspend rail for AI agents**
+**AI agent passport and control plane for agentic work.**
 
-> Built on the [Open Agent Passport (OAP) v1.0 specification](https://github.com/aporthq/aport-spec)
+Issue passports, authorize tool calls before execution, and audit what happened.
 
-[![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Ready-10b981?style=flat-square&logo=github-actions)](https://github.com/aporthq/policy-verify-action)
-[![API Status](https://img.shields.io/badge/API-Live-10b981?style=flat-square&logo=api)](https://api.aport.io)
-[![License](https://img.shields.io/badge/License-MIT-f59e0b?style=flat-square)](LICENSE)
-
-[🌐 Website](https://aport.io) • [📚 Docs](https://aport.io/docs) • [🚀 Try Now](https://aport.io/dashboard) • [💬 Support](mailto:support@aport.io)
+[Website](https://aport.io) · [Docs](https://aport.io/docs) · [Quickstart](https://aport.io/quickstart) · [Spec](https://github.com/aporthq/aport-spec) · [Contact](mailto:team@aport.io)
 
 </div>
 
 ---
 
-## 🎯 The Problem
+## What APort Is
 
-<div align="center">
+APort is a control plane for AI agents that act through tools. It gives every agent a passport, checks policy before an action runs, and records signed allow/deny decisions for audit.
 
-```mermaid
-graph TD
-    A[🤖 AI Agent] --> B[💳 Refund $1000]
-    A --> C[📊 Export 1M Rows]
-    A --> D[🔀 Merge to Main]
-    A --> E[🚀 Deploy to Prod]
-    
-    B --> F[❌ No Identity Check]
-    C --> F
-    D --> F
-    E --> F
-    
-    F --> G[💥 Security Incident]
-    G --> H[⏰ Hours to Detect]
-    H --> I[💰 $10K+ in Damages]
-    
-    style A fill:#ff6b6b
-    style F fill:#ff6b6b
-    style G fill:#ff6b6b
-    style I fill:#ff6b6b
-```
+The core idea is simple:
 
-**Organizations are letting AI agents perform sensitive actions without proper identity verification or policy enforcement.**
+- **Identity:** who is this agent, who owns it, and what assurance level does it have?
+- **Policy:** what capabilities, limits, regions, and contexts are allowed?
+- **Guardrails:** should this tool call run right now?
+- **Proof:** what was decided, why, when, and for which passport?
 
-</div>
+APort is built around the [Open Agent Passport (OAP)](https://github.com/aporthq/aport-spec), an open model for agent identity, capabilities, limits, status, and decision records.
 
-## ✨ The Solution
-
-<div align="center">
+## Runtime Flow
 
 ```mermaid
-graph TD
-    A[🤖 AI Agent<br/>with Passport] --> B[🛡️ APort Verify]
-    B --> C{Policy Check}
-    C -->|✅ Allowed| D[✅ Action Proceeds]
-    C -->|❌ Blocked| E[🚫 Action Blocked]
-    
-    F[📋 Policy Pack] --> B
-    G[⚡ Global Suspend] --> B
-    
-    style A fill:#06b6d4,color:#ffffff
-    style B fill:#10b981,color:#ffffff
-    style D fill:#10b981,color:#ffffff
-    style E fill:#ef4444,color:#ffffff
-    style F fill:#8b5cf6,color:#ffffff
-    style G fill:#f59e0b,color:#ffffff
+%%{init: {"theme": "base", "themeVariables": {"background": "#06090f", "primaryColor": "#0d1117", "primaryTextColor": "#e8ecf1", "primaryBorderColor": "#22d3ee", "lineColor": "#7a8ba3", "secondaryColor": "#111827", "tertiaryColor": "#020617", "fontFamily": "Inter, ui-sans-serif, system-ui"}}}%%
+flowchart TB
+    A["Agent tool call"]
+    A --> B["Framework hook<br/>Claude Code · Cursor · OpenClaw · MCP"]
+    B --> C["APort verify"]
+    C --> D["Load passport"]
+    D --> E["Evaluate policy limits"]
+    E --> F{"Decision"}
+    F -->|"ALLOW"| G["Tool executes"]
+    F -->|"DENY"| H["Tool blocked"]
+    G --> I["Audit decision"]
+    H --> I
+    I --> J["Reason · context<br/>timestamp · signature"]
+
+    classDef node fill:#0d1117,color:#e8ecf1,stroke:#22d3ee,stroke-width:1px;
+    classDef decision fill:#020617,color:#e8ecf1,stroke:#67e8f9,stroke-width:2px;
+    classDef allow fill:#0d1117,color:#e8ecf1,stroke:#10b981,stroke-width:2px;
+    classDef deny fill:#0d1117,color:#e8ecf1,stroke:#ef4444,stroke-width:2px;
+    class A,B,C,D,E,I,J node;
+    class F decision;
+    class G allow;
+    class H deny;
 ```
 
-**APort provides a neutral, portable identity and policy enforcement layer for AI agents across all platforms.**
+APort runs at the tool boundary. It is not a prompt, policy reminder, or post-hoc log parser. If the passport does not authorize the action, the action does not run.
 
-</div>
+## Install In 60 Seconds
 
-## 🚀 Quick Start
-
-### 1. Create Your Agent Passport
+Claude Code:
 
 ```bash
-# Create a passport via API
-curl -X POST "https://api.aport.io/api/issue" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "name": "HappyRefunds Bot",
-    "role": "Support Refunds",
-    "description": "Refund helper for customer support",
-    "capabilities": [{"id": "finance.payment.refund", "params": {}}],
-    "limits": {
-      "refund_amount_max_per_tx": 50,
-      "refund_amount_daily_cap": 200
-    },
-    "regions": ["US", "CA"],
-    "contact": "team@aport.io",
-    "controller_type": "person",
-    "status": "active",
-    "links": {
-      "homepage": "https://aport.io",
-      "repo": "https://github.com/aporthq/agent-passport"
-    },
-    "categories": ["support", "payments"],
-    "framework": ["OpenAI", "LangChain"]
-  }'
+curl -fsSL https://aport.io/install.sh | bash -s -- claude-code
 ```
 
-### 2. Add Policy Enforcement
+Or use the npm package directly:
 
-```yaml
-# .github/workflows/aport-verify.yml
-name: APort Verify PR
-on: [pull_request]
-
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: aporthq/policy-verify-action@v1
-        with:
-          agent-id: ${{ secrets.APORT_AGENT_ID }}
-          policy-pack: 'code.repository.merge.v1'
+```bash
+npx --yes @aporthq/aport-agent-guardrails claude-code
 ```
 
-### 3. Integrate with Your App
+Non-interactive hosted setup:
 
-```javascript
-// Express.js with Policy Pack middleware
-const { requirePolicy } = require("@aporthq/middleware-express-express");
-
-// Apply policy enforcement to refunds endpoint
-app.post("/api/refunds", 
-  requirePolicy("finance.payment.refund.v1", "agt_inst_xyz789"),
-  async (req, res) => {
-    // Your business logic - policy already verified!
-    const refund = await processRefund(req.body);
-    res.json({ success: true, refund });
-  }
-);
+```bash
+npx --yes @aporthq/aport-agent-guardrails claude-code \
+  --quick-hosted \
+  --email you@example.com \
+  --non-interactive
 ```
 
-## 🎨 Features
+The installer can create a hosted passport, create a narrow passport-bound setup key, write the framework hook/config, and start sending decisions to APort.
 
-<div align="center">
+## Supported Frameworks
 
-| 🏷️ **Feature** | 📝 **Description** | 🎯 **Use Case** |
+| Framework | Enforcement Surface | Setup |
 |---|---|---|
-| **🆔 Agent Identity** | Portable passports with capabilities & limits | Know who your agents are |
-| **📋 Policy Packs** | Pre-built policies for common actions | Enforce business rules |
-| **⚡ Real-time Verify** | Sub-100ms policy checks | Block bad actions instantly |
-| **🚨 Global Suspend** | Kill switch across all platforms | Stop incidents in seconds |
-| **🔐 Multi-level Assurance** | Email, GitHub, Domain verification | Trust but verify |
-| **📊 Verifiable Attestation** | Complete action history | Compliance & debugging |
+| Claude Code | `PreToolUse` hook for Bash, Read, Write, Edit, Web, MCP, Task, and more | `npx @aporthq/aport-agent-guardrails claude-code` |
+| Cursor | Shell/tool hooks for file, shell, web, MCP, and agent actions | `npx @aporthq/aport-agent-guardrails cursor` |
+| OpenClaw | Plugin-level `before_tool_call` enforcement | `npx @aporthq/aport-agent-guardrails openclaw` |
+| LangChain | Callback/provider integration | `npx @aporthq/aport-agent-guardrails langchain` |
+| CrewAI | Released compatibility adapter and native-provider path | `npx @aporthq/aport-agent-guardrails crewai` |
+| DeerFlow | Generic OAP provider setup | `npx @aporthq/aport-agent-guardrails deerflow` |
+| n8n | Config and API-first guardrail path | `npx @aporthq/aport-agent-guardrails n8n` |
+| Custom agents | Direct verify API or OAP provider | `POST /api/verify/policy/{pack_id}` |
 
-</div>
-
-## 🛠️ Supported Platforms
-
-<div align="center">
+## What Gets Checked
 
 ```mermaid
-graph LR
-    A[🛡️ APort Core] --> B[💳 Payments]
-    A --> C[📊 Data Export]
-    A --> D[🔀 Git Operations]
-    A --> E[🚀 CI/CD]
-    A --> F[💬 Messaging]
-    
-    B --> B1[Stripe<br/>PayPal<br/>Square]
-    C --> C1[Segment<br/>Fivetran<br/>Snowflake]
-    D --> D1[GitHub<br/>GitLab<br/>Bitbucket]
-    E --> E1[GitHub Actions<br/>Jenkins<br/>CircleCI]
-    F --> F1[Slack<br/>Teams<br/>Discord]
-    
-    style A fill:#06b6d4,color:#ffffff
-    style B fill:#10b981,color:#ffffff
-    style C fill:#f59e0b,color:#ffffff
-    style D fill:#8b5cf6,color:#ffffff
-    style E fill:#ef4444,color:#ffffff
-    style F fill:#06b6d4,color:#ffffff
+%%{init: {"theme": "base", "themeVariables": {"background": "#06090f", "primaryColor": "#0d1117", "primaryTextColor": "#e8ecf1", "primaryBorderColor": "#22d3ee", "lineColor": "#7a8ba3", "secondaryColor": "#111827", "tertiaryColor": "#020617", "fontFamily": "Inter, ui-sans-serif, system-ui"}}}%%
+flowchart TB
+    P["Agent passport"]
+    P --> C1["system.command.execute"]
+    C1 --> L1["commands · blocked patterns · timeout"]
+    L1 --> C2["data.file.read / write"]
+    C2 --> L2["paths · secret patterns · file size"]
+    L2 --> C3["web.fetch / browser"]
+    C3 --> L3["domains · methods · rate limits"]
+    L3 --> C4["mcp.tool.execute"]
+    C4 --> L4["servers · tools · parameter size"]
+    L4 --> C5["repo.pr.create / merge"]
+    C5 --> L5["repos · branches · PR size · review rules"]
+    L5 --> C6["messaging.send"]
+    C6 --> L6["recipients · daily caps · approval"]
+    L6 --> C7["data.export"]
+    C7 --> L7["row caps · PII · collections"]
+    L7 --> C8["agent.session.create"]
+    C8 --> L8["concurrency · duration · session type"]
+
+    classDef root fill:#020617,color:#e8ecf1,stroke:#67e8f9,stroke-width:2px;
+    classDef node fill:#0d1117,color:#e8ecf1,stroke:#7a8ba3,stroke-width:1px;
+    classDef leaf fill:#111827,color:#e8ecf1,stroke:#22d3ee,stroke-width:1px;
+    class P root;
+    class C1,C2,C3,C4,C5,C6,C7,C8 node;
+    class L1,L2,L3,L4,L5,L6,L7,L8 leaf;
 ```
 
-</div>
+Defaults are intentionally developer-friendly, but sensitive operations still have hard stops. For example, sensitive file reads such as `.env*`, `.aws/*`, `.ssh/*`, and `*credentials*` can be blocked by default while teams tune exact policies for their environment.
 
-## 📦 Policy Packs
+## Core Repositories
 
-> **OAP v1.0 compliant policy definitions for instant AI agent governance**
+| Repository | Purpose |
+|---|---|
+| [aport-agent-guardrails](https://github.com/aporthq/aport-agent-guardrails) | One-command guardrail installers, local evaluator, framework hooks, enterprise scripts |
+| [aport-spec](https://github.com/aporthq/aport-spec) | Open Agent Passport schemas and decision format |
+| [agent-passport](https://github.com/aporthq/agent-passport) | APort dashboard, APIs, hosted verification, org/team workflows |
+| [aport-skills](https://github.com/aporthq/aport-skills) | Agent skills and setup helpers |
+| [policy-verify-action](https://github.com/aporthq/policy-verify-action) | GitHub Action for CI policy verification |
 
-### 💳 **Finance & Payments**
-```json
-{
-  "policy": "finance.payment.charge.v1",
-  "capability": "payments.charge",
-  "assurance": "L2",
-  "limits": {
-    "currency_limits": { "USD": { "max_per_tx": 10000 } },
-    "allowed_merchant_ids": ["merchant_123"],
-    "blocked_categories": ["adult", "gambling"]
-  }
-}
-```
+## Hosted And Local Modes
 
-### 💰 **Refunds Protection**
-```json
-{
-  "policy": "finance.payment.refund.v1",
-  "capability": "finance.payment.refund", 
-  "assurance": "L2",
-  "limits": {
-    "max_refund_per_tx": 1000,
-    "cross_currency_denied": true,
-    "reason_codes_required": ["defective", "not_as_described"]
-  }
-}
-```
+APort supports both hosted and local enforcement:
 
-### 📊 **Data Export Control**
-```json
-{
-  "policy": "data.export.create.v1",
-  "capability": "data.export",
-  "assurance": "L1", 
-  "limits": {
-    "max_rows_per_export": 100000,
-    "allow_pii": false,
-    "allowed_formats": ["csv", "json"]
-  }
-}
-```
-
-### 🔀 **Repository Safety**
-```json
-{
-  "policy": "code.repository.merge.v1",
-  "capabilities": ["repo.merge", "repo.pr.create"],
-  "assurance": "L2",
-  "limits": {
-    "max_prs_per_day": 5,
-    "allowed_repos": ["owner/repo1"],
-    "require_review": true
-  }
-}
-```
-
-### 💬 **Messaging Control**
-```json
-{
-  "policy": "messaging.message.send.v1",
-  "capability": "messaging.send",
-  "assurance": "L1",
-  "limits": {
-    "messages_per_hour": 100,
-    "allowed_channels": ["support", "notifications"],
-    "mention_policies": "restricted"
-  }
-}
-```
-
-## 🎯 Real-World Examples
-
-### 🛒 E-commerce Refund Bot
-```javascript
-// Express.js with Policy Pack middleware
-const { requirePolicy } = require("@aporthq/middleware-express-express");
-
-app.post("/api/refunds", 
-  requirePolicy("finance.payment.refund.v1", "agt_inst_xyz789"),
-  async (req, res) => {
-    // Policy already verified! Check specific limits
-    const passport = req.policyResult.passport;
-    
-    if (req.body.amount > passport.limits.refund_amount_max_per_tx) {
-      return res.status(403).json({
-        error: "Refund exceeds limit",
-        requested: req.body.amount,
-        limit: passport.limits.refund_amount_max_per_tx
-      });
-    }
-
-    // Process refund safely
-    const refund = await stripe.refunds.create({
-      amount: req.body.amount,
-      payment_intent: req.body.payment_intent
-    });
-    
-    res.json({ success: true, refund });
-  }
-);
-```
-
-### 🔀 GitHub PR Automation
-```yaml
-# .github/workflows/aport-verify.yml
-name: APort Verify PR
-on: [pull_request]
-
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify via APort
-        run: |
-          BODY=$(jq -n \
-            --arg agent_id "$APORT_AGENT_ID" \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg base "${{ github.event.pull_request.base.ref }}" \
-            --arg head "${{ github.event.pull_request.head.ref }}" \
-            --argjson files_changed "${{ steps.changed-files.outputs.files }}" \
-            '{
-              agent_id: $agent_id,
-              context: {
-                repo: $repo,
-                base: $base,
-                head: $head,
-                files_changed: $files_changed,
-                author: "${{ github.event.pull_request.user.login }}"
-              }
-            }')
-          
-          curl -s -X POST "https://api.aport.io/api/verify/policy/code.repository.merge.v1" \
-            -H "Content-Type: application/json" \
-            -d "$BODY" | tee result.json
-        env:
-          APORT_AGENT_ID: ${{ secrets.APORT_AGENT_ID }}
-```
-
-### 📊 Data Export Control
-```javascript
-// FastAPI with Policy Pack middleware
-from fastapi import FastAPI, Request
-from aport.middleware import require_policy
-
-@app.post("/api/data/export")
-@require_policy("data.export.create.v1", "agt_inst_xyz789")
-async def export_data(request: Request, export_data: dict):
-    passport = request.state.policy_result.passport
-    
-    # Check PII permission
-    if export_data.get("include_pii") and not passport.limits.allow_pii:
-        raise HTTPException(403, {
-            "error": "PII export not allowed",
-            "agent_id": passport.agent_id,
-            "upgrade_instructions": "Request PII export capability from your administrator"
-        })
-    
-    # Check row limit
-    if export_data["rows"] > passport.limits.max_rows_per_export:
-        raise HTTPException(403, {
-            "error": "Export exceeds row limit",
-            "requested": export_data["rows"],
-            "limit": passport.limits.max_rows_per_export
-        })
-    
-    # Process export safely
-    return {"success": True, "export_id": f"exp_{int(time.time())}"}
-```
-
-## 📊 Performance & Reliability
-
-<div align="center">
-
-| **Metric** | **Target** | **Actual** |
+| Mode | Best For | Behavior |
 |---|---|---|
-| **⚡ Verify Latency** | <100ms p95 | **~100ms p95** |
-| **🚨 Suspend Time** | <30s global | **~15s global** |
-| **📈 Uptime** | 99.9% | **99.99%** |
-| **🔄 Throughput** | 10k req/s | **50k+ req/s** |
+| Hosted API | Teams, pilots, audit trails, dashboards, org controls | Calls APort verify API, records decisions, supports suspend/kill switch |
+| Local | Offline development, privacy-sensitive trials, CI fixtures | Evaluates against local passport JSON and writes local decision/audit files |
 
-</div>
+Hosted mode is fail-closed by default. If the API cannot be reached, sensitive tool calls are denied rather than silently downgraded.
 
-## 🏆 Why Choose APort?
+## Enterprise Controls
 
-<div align="center">
+APort is designed for teams that need more than a prompt-level rule:
 
-```mermaid
-graph TD
-    A[🤔 Current State] --> B[❌ Custom Solutions]
-    A --> C[❌ Platform Lock-in]
-    A --> D[❌ No Global Control]
-    
-    E[✨ With APort] --> F[✅ Standardized]
-    E --> G[✅ Portable]
-    E --> H[✅ Global Suspend]
-    
-    B --> I[💰 High Cost]
-    C --> I
-    D --> I
-    
-    F --> J[💰 Lower Cost]
-    G --> J
-    H --> J
-    
-    style A fill:#ef4444,color:#ffffff
-    style E fill:#10b981,color:#ffffff
-    style I fill:#ef4444,color:#ffffff
-    style J fill:#10b981,color:#ffffff
-```
+- **Organization context:** team-owned passports, scoped setup keys, member roles, and org-wide audit.
+- **Multi-tenant issuance:** template passports can mint instance passports for devices, users, tenants, or customer installs.
+- **Data residency:** passport, policy, and audit data can be routed by tenant and region.
+- **Kill switch:** suspend a passport and stop future tool authorization.
+- **Evidence:** decisions include policy id, allow/deny result, reasons, timestamps, assurance level, and integrity metadata.
+- **Enterprise deployment:** self-contained device deployment, enforcement, and uninstall scripts for IT-managed fleets.
 
-</div>
+## Why This Exists
 
-### 🎯 **Neutral & Portable**
-- Works across all platforms
-- No vendor lock-in
-- Open standards
+Agentic systems are moving from chat into execution: shell commands, file edits, browser actions, MCP tools, repo operations, exports, messages, and payments. Traditional controls do not map cleanly:
 
-### ⚡ **Real-time Enforcement**
-- Sub-100ms policy checks
-- Global suspend in seconds
-- Edge-deployed for speed
+- Prompts are advisory.
+- Output filters run after the model has already planned the action.
+- Sandboxes contain blast radius but do not answer whether the action was authorized.
+- Generic API keys identify software, not the agent passport, owner, limits, and reason for a specific action.
 
-### 🔐 **Enterprise Ready**
-- Multi-level assurance
-- Complete Verifiable Attestation
-- Compliance built-in
+APort fills the missing layer: **pre-action authorization for agent tools**.
 
-### 🛠️ **Developer Friendly**
-- Simple APIs
-- Rich SDKs
-- GitHub Actions ready
+## Links
 
-## 👥 For Every Role
-
-
-### 🤖 **Agent Builders**
-Create and manage AI agent passports with capabilities and limits
-
-```bash
-# Issue a passport
-curl -X POST "https://api.aport.io/api/issue" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "name": "HappyRefunds Bot",
-    "role": "Support Refunds",
-    "description": "Refund helper for customer support",
-    "capabilities": [{"id": "finance.payment.refund", "params": {}}],
-    "limits": {"refund_amount_max_per_tx": 50},
-    "regions": ["US", "CA"],
-    "contact": "team@aport.io",
-    "controller_type": "person",
-    "status": "active"
-  }'
-```
-
-### 🏢 **Platform Developers**
-Integrate APort middleware to protect sensitive operations
-
-```javascript
-// Express.js middleware
-const { requirePolicy } = require("@aporthq/middleware-express-express");
-
-app.post("/api/refunds", 
-  requirePolicy("finance.payment.refund.v1", "agt_inst_xyz789"),
-  async (req, res) => {
-    // Policy already verified!
-    res.json({ success: true, refund: await processRefund(req.body) });
-  }
-);
-```
-
-### 🔧 **DevOps Engineers**
-Add GitHub Actions for automated policy verification
-
-```yaml
-# .github/workflows/aport-verify.yml
-name: APort Verify PR
-on: [pull_request]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: aporthq/policy-verify-action@v1
-        with:
-          agent-id: ${{ secrets.APORT_AGENT_ID }}
-          policy-pack: 'code.repository.merge.v1'
-```
-
-### 🎯 **No-Code Platforms**
-Mint instance passports for each tenant installation
-
-```bash
-# Mint instance passport on tenant install
-curl -X POST "https://api.aport.io/api/passports/agt_tmpl_abc123/instances" \
-  -H "Authorization: Bearer YOUR_PLATFORM_API_KEY" \
-  -d '{
-    "platform_id": "gorgias",
-    "controller_id": "org_acme",
-    "tenant_ref": "store_987",
-    "overrides": {"limits": {"refund_amount_max_per_tx": 50}}
-  }'
-```
-
-## 🚀 Get Started Today
-
-<div align="center">
-
-### 🎯 **For Developers**
-[![Try APort](https://img.shields.io/badge/Try%20APort-Now-10b981?style=for-the-badge&logo=rocket)](https://aport.io/dashboard)
-
-### 🏢 **For Platforms**
-[![Contact Sales](https://img.shields.io/badge/Contact%20Sales-Let's%20Talk-06b6d4?style=for-the-badge&logo=mail)](mailto:team@aport.io)
-
-### 💬 **Get Support**
-[![Support](https://img.shields.io/badge/Support-Help%20Center-06b6d4?style=for-the-badge&logo=mail)](mailto:support@aport.io)
-
-</div>
-
-## 📚 Resources
-
-- 📖 **[Documentation](https://aport.io/docs)** - Complete guides and API reference
-- 🎮 **[Playground](https://aport.io/playground)** - Try APort in your browser
-- 📺 **[Video Tutorials](https://youtube.com/@aport)** - Step-by-step guides
-- 💡 **[Examples](https://github.com/aporthq/examples)** - Real-world implementations
-- 🛡️ **[OAP v1.0 Specification](https://github.com/aporthq/aport-spec)** - Open Agent Passport standard
-- 🐛 **[Report Issues](https://github.com/aporthq/agent-passport/issues)** - Help us improve
-
-## 🤝 Contributing
-
-We love contributions! Whether it's:
-
-- 🐛 **Bug fixes**
-- ✨ **New features** 
-- 📚 **Documentation**
-- 🎨 **Design improvements**
-- 🧪 **Tests**
-
-Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- Website: [aport.io](https://aport.io)
+- Quickstart: [aport.io/quickstart](https://aport.io/quickstart)
+- Framework docs: [aport.io/frameworks](https://aport.io/frameworks)
+- Blog: [aport.io/blog](https://aport.io/blog)
+- OAP spec: [github.com/aporthq/aport-spec](https://github.com/aporthq/aport-spec)
+- Support: [support@aport.io](mailto:support@aport.io)
 
 ---
 
 <div align="center">
 
-**🛡️ Secure your AI agents. Trust but verify.**
-
-[![GitHub](https://img.shields.io/badge/GitHub-Follow-black?style=social&logo=github)](https://github.com/aporthq)
-[![Twitter](https://img.shields.io/badge/Twitter-Follow-06b6d4?style=social&logo=twitter)](https://twitter.com/aporthq)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Follow-06b6d4?style=social&logo=linkedin)](https://linkedin.com/company/aporthq)
-
-Made with ❤️ by the APort team
+**Passports for agents. Policy before tools. Proof after every decision.**
 
 </div>
